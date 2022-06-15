@@ -18,8 +18,15 @@ import {
   ISelectableOption,
   useTheme,
 } from "@fluentui/react";
-import PinIcon from "@mdi/svg/svg/pin.svg";
-import { Theme } from "@mui/material";
+import PushPinIcon from "@mui/icons-material/PushPin";
+import {
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Theme,
+  styled as muiStyled,
+  ListItemButton,
+} from "@mui/material";
 import { makeStyles } from "@mui/styles";
 import cx from "classnames";
 import produce from "immer";
@@ -30,7 +37,6 @@ import { List, AutoSizer, ListRowProps } from "react-virtualized";
 import { filterMap } from "@foxglove/den/collection";
 import { useDataSourceInfo } from "@foxglove/studio-base/PanelAPI";
 import EmptyState from "@foxglove/studio-base/components/EmptyState";
-import Icon from "@foxglove/studio-base/components/Icon";
 import { LegacyInput } from "@foxglove/studio-base/components/LegacyStyledComponents";
 import Panel from "@foxglove/studio-base/components/Panel";
 import { usePanelContext } from "@foxglove/studio-base/components/PanelContext";
@@ -67,39 +73,25 @@ const useStyles = makeStyles((theme: Theme) => ({
   warn: { color: theme.palette.warning.main },
   error: { color: theme.palette.error.main },
   stale: { color: theme.palette.text.secondary },
-  pinIcon: {
-    marginRight: 4,
-    marginLeft: 4,
-    verticalAlign: "middle",
-    visibility: "hidden",
+}));
 
-    "& svg": {
-      fontSize: 16,
-      position: "relative",
-      top: -1,
-    },
+const StyledListItemButton = muiStyled(ListItemButton, {
+  shouldForwardProp: (prop) => prop !== "isPinned",
+})<{
+  isPinned: boolean;
+}>(({ isPinned, theme }) => ({
+  gap: theme.spacing(1),
+
+  ".MuiListItemIcon-root": {
+    visibility: isPinned ? "visibile" : "hidden",
+    minWidth: "auto",
   },
-  pinIconActive: {
-    visibility: "visible",
-  },
-  nodeRow: {
-    textDecoration: "none",
-    cursor: "pointer",
-    userSelect: "none",
+  ".MuiListItemText-root": {
+    gap: theme.spacing(1),
     display: "flex",
-    alignItems: "center",
-    padding: 0,
-    lineHeight: "24px",
-    overflow: "hidden",
-    whiteSpace: "nowrap",
-    textOverflow: "ellipsis",
-
-    "&:hover": {
-      backgroundColor: theme.palette.action.hover,
-    },
-    "&:hover .icon": {
-      visibility: "visible",
-    },
+  },
+  "&:hover .MuiListItemIcon-root": {
+    visibility: "visible",
   },
 }));
 
@@ -117,31 +109,26 @@ const NodeRow = React.memo(function NodeRow(props: NodeRowProps) {
 
   const { info, isPinned } = props;
   const levelName = LEVEL_NAMES[info.status.level];
-  const classes = useStyles();
   return (
-    <div className={classes.nodeRow} onClick={handleClick} data-test-diagnostic-row>
-      <Icon
-        fade={!isPinned}
-        onClick={handleClickPin}
-        className={cx(classes.pinIcon, {
-          [classes.pinIconActive]: isPinned,
-        })}
-      >
-        <PinIcon />
-      </Icon>
-      <div>{info.displayName}</div>
-      &nbsp;–&nbsp;
-      <div
-        className={cx({
-          [classes.ok]: levelName === "ok",
-          [classes.warn]: levelName === "warn",
-          [classes.error]: levelName === "error",
-          [classes.stale]: levelName === "stale",
-        })}
-      >
-        {info.status.message}
-      </div>
-    </div>
+    <ListItem dense disablePadding data-test-diagnostic-row>
+      <StyledListItemButton isPinned={isPinned} onClick={handleClick}>
+        <ListItemIcon onClick={handleClickPin}>
+          <PushPinIcon color={isPinned ? "inherit" : "disabled"} />
+        </ListItemIcon>
+        <ListItemText
+          primary={info.displayName}
+          secondary={info.status.message}
+          secondaryTypographyProps={{
+            color: {
+              ok: "success.main",
+              warn: "warning.main",
+              error: "error.main",
+              stale: "text.secondary",
+            }[levelName ?? "stale"],
+          }}
+        />
+      </StyledListItemButton>
+    </ListItem>
   );
 });
 
@@ -224,16 +211,15 @@ function DiagnosticSummary(props: Props): JSX.Element {
 
   const renderRow = useCallback(
     // eslint-disable-next-line react/no-unused-prop-types
-    ({ item, style, key }: ListRowProps & { item: DiagnosticInfo }) => {
+    ({ item, key }: ListRowProps & { item: DiagnosticInfo }) => {
       return (
-        <div key={key} style={style}>
-          <NodeRow
-            info={item}
-            isPinned={pinnedIds.includes(item.id)}
-            onClick={showDetails}
-            onClickPin={togglePinned}
-          />
-        </div>
+        <NodeRow
+          key={key}
+          info={item}
+          isPinned={pinnedIds.includes(item.id)}
+          onClick={showDetails}
+          onClickPin={togglePinned}
+        />
       );
     },
     [pinnedIds, showDetails, togglePinned],
