@@ -3,11 +3,8 @@ on:
   push:
     tags:
       - '*'
-    branches:
-      - main
+    branches: [main, release/*]
   pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -16,24 +13,26 @@ jobs:
     outputs:
       snap-file: ${{ steps.build-snap.outputs.snap }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+      with:
+        lfs: true
     - uses: snapcore/action-build@v1
       id: build-snap
 
     # Make sure the snap is installable
     - run: |
         sudo snap install --dangerous ${{ steps.build-snap.outputs.snap }}
-    # @todo Do some testing with the snap
+    # Do some testing with the snap
     - run: |
-       foxglove-studio.web-server &> /tmp/tmp.log & sleep 2
-       grep "Caddefqwefqwey serving static files on :8080" /tmp/tmp.log
+       foxglove-studio.web-server &> tmp.log & sleep 2
+       grep "Caddy serving static files on :8080" tmp.log
     - uses: actions/upload-artifact@v3
       with:
         name: foxglove-studio-snap
         path: ${{ steps.build-snap.outputs.snap }}
 
   publish:
-    if: github.ref == 'refs/heads/foxy' || startsWith(github.ref, 'refs/tags/')
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     needs: build
     steps:
