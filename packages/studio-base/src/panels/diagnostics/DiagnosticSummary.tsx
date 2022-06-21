@@ -11,13 +11,6 @@
 //   found at http://www.apache.org/licenses/LICENSE-2.0
 //   You may not use this file except in compliance with the License.
 
-import {
-  Dropdown,
-  IDropdownOption,
-  IDropdownStyles,
-  ISelectableOption,
-  useTheme,
-} from "@fluentui/react";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import {
   ListItem,
@@ -25,7 +18,9 @@ import {
   ListItemText,
   styled as muiStyled,
   ListItemButton,
-  Typography,
+  MenuItem,
+  Select,
+  InputBase,
 } from "@mui/material";
 import produce from "immer";
 import { compact, set, uniq } from "lodash";
@@ -35,7 +30,6 @@ import { List, AutoSizer, ListRowProps } from "react-virtualized";
 import { filterMap } from "@foxglove/den/collection";
 import { useDataSourceInfo } from "@foxglove/studio-base/PanelAPI";
 import EmptyState from "@foxglove/studio-base/components/EmptyState";
-import { LegacyInput } from "@foxglove/studio-base/components/LegacyStyledComponents";
 import Panel from "@foxglove/studio-base/components/Panel";
 import { usePanelContext } from "@foxglove/studio-base/components/PanelContext";
 import PanelToolbar from "@foxglove/studio-base/components/PanelToolbar";
@@ -93,6 +87,18 @@ const StyledListItemButton = muiStyled(ListItemButton, {
   },
 }));
 
+const StyledSelect = muiStyled(Select)(() => ({
+  ".MuiInputBase-input.MuiSelect-select.MuiInputBase-inputSizeSmall": {
+    paddingTop: 0,
+    paddingBottom: 0,
+    minWidth: 40,
+  },
+  ".MuiListItemText-root": {
+    marginTop: 0,
+    marginBottom: 0,
+  },
+}));
+
 const NodeRow = React.memo(function NodeRow(props: NodeRowProps) {
   const { info, isPinned, onClick, onClickPin } = props;
 
@@ -109,8 +115,13 @@ const NodeRow = React.memo(function NodeRow(props: NodeRowProps) {
   return (
     <ListItem dense disablePadding data-test-diagnostic-row>
       <StyledListItemButton isPinned={isPinned} onClick={handleClick}>
-        <ListItemIcon onClick={handleClickPin}>
-          <PushPinIcon color={isPinned ? "inherit" : "disabled"} />
+        <ListItemIcon
+          onClick={(event) => {
+            handleClickPin();
+            event.stopPropagation();
+          }}
+        >
+          <PushPinIcon fontSize="small" color={isPinned ? "inherit" : "disabled"} />
         </ListItemIcon>
         <ListItemText
           primary={info.displayName}
@@ -136,40 +147,6 @@ const ALLOWED_DATATYPES: string[] = [
 ];
 
 function DiagnosticSummary(props: Props): JSX.Element {
-  const theme = useTheme();
-  const dropdownStyles = useMemo(
-    () =>
-      ({
-        root: {
-          minWidth: "100px",
-        },
-        caretDownWrapper: {
-          top: 0,
-          lineHeight: 16,
-          height: 16,
-        },
-        title: {
-          backgroundColor: "transparent",
-          fontSize: theme.fonts.small.fontSize,
-          borderColor: theme.semanticColors.bodyDivider,
-          lineHeight: 22,
-          height: 22,
-        },
-        dropdownItemSelected: {
-          fontSize: theme.fonts.small.fontSize,
-          lineHeight: 22,
-          height: 22,
-          minHeight: 22,
-        },
-        dropdownItem: {
-          lineHeight: 22,
-          height: 22,
-          minHeight: 22,
-          fontSize: theme.fonts.small.fontSize,
-        },
-      } as Partial<IDropdownStyles>),
-    [theme],
-  );
   const { config, saveConfig } = props;
   const { topics } = useDataSourceInfo();
   const { minLevel, topicToRender, pinnedIds, hardwareIdFilter, sortByLevel = true } = config;
@@ -216,22 +193,6 @@ function DiagnosticSummary(props: Props): JSX.Element {
     [pinnedIds, showDetails, togglePinned],
   );
 
-  const hardwareFilter = (
-    <LegacyInput
-      style={{
-        width: "100%",
-        padding: "0",
-        backgroundColor: "transparent",
-        opacity: "0.5",
-        marginLeft: "10px",
-        fontSize: "12px",
-      }}
-      value={hardwareIdFilter}
-      placeholder="Filter"
-      onChange={(e) => saveConfig({ hardwareIdFilter: e.target.value })}
-    />
-  );
-
   // Filter down all topics to those that conform to our supported datatypes
   const availableTopics = useMemo(() => {
     const filtered = topics
@@ -243,6 +204,7 @@ function DiagnosticSummary(props: Props): JSX.Element {
   }, [topics, topicToRender]);
 
   const diagnostics = useDiagnostics(topicToRender);
+
   const summary = useMemo(() => {
     if (diagnostics.size === 0) {
       return (
@@ -316,33 +278,37 @@ function DiagnosticSummary(props: Props): JSX.Element {
     });
   }, [actionHandler, availableTopics, config, topicToRender, updatePanelSettingsTree]);
 
-  const renderOption = (option: ISelectableOption | undefined) =>
-    option ? (
-      <Typography variant="inherit" color={MESSAGE_COLORS[option.text]}>
-        &gt;= {option.text.toUpperCase()}
-      </Typography>
-    ) : (
-      ReactNull
-    );
-
   return (
     <Stack flex="auto">
       <PanelToolbar helpContent={helpContent}>
-        <Dropdown
-          styles={dropdownStyles}
-          onRenderOption={renderOption}
-          onRenderTitle={(options: IDropdownOption[] | undefined) =>
-            options?.[0] ? renderOption(options[0]) : ReactNull
-          }
-          onChange={(_ev, option) => {
-            if (option) {
-              saveConfig({ minLevel: option.key as number });
-            }
-          }}
-          options={KNOWN_LEVELS.map((key: number) => ({ key, text: LEVEL_NAMES[key] ?? "" }))}
-          selectedKey={minLevel}
-        />
-        {hardwareFilter}
+        <Stack flex="auto" direction="row" gap={1}>
+          <StyledSelect
+            value={minLevel}
+            id="status-filter-menu"
+            color="secondary"
+            size="small"
+            onChange={(event) => saveConfig({ minLevel: event.target.value as number })}
+            MenuProps={{ MenuListProps: { dense: true } }}
+          >
+            {KNOWN_LEVELS.map((level) => (
+              <MenuItem key={level} value={level}>
+                <ListItemText
+                  primary={LEVEL_NAMES[level].toUpperCase()}
+                  primaryTypographyProps={{
+                    variant: "inherit",
+                    color: MESSAGE_COLORS[LEVEL_NAMES[level] ?? "stale"],
+                  }}
+                />
+              </MenuItem>
+            ))}
+          </StyledSelect>
+          <InputBase
+            value={hardwareIdFilter}
+            placeholder="Filter"
+            onChange={(e) => saveConfig({ hardwareIdFilter: e.target.value })}
+            style={{ flex: "auto", font: "inherit" }}
+          />
+        </Stack>
       </PanelToolbar>
       <Stack flex="auto">{summary}</Stack>
     </Stack>
@@ -356,6 +322,7 @@ const defaultConfig: DiagnosticSummaryConfig = {
   topicToRender: DIAGNOSTIC_TOPIC,
   sortByLevel: true,
 };
+
 export default Panel(
   Object.assign(DiagnosticSummary, {
     panelType: "DiagnosticSummary",
