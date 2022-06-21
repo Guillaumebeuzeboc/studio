@@ -23,12 +23,10 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  Theme,
   styled as muiStyled,
   ListItemButton,
+  Typography,
 } from "@mui/material";
-import { makeStyles } from "@mui/styles";
-import cx from "classnames";
 import produce from "immer";
 import { compact, set, uniq } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
@@ -68,12 +66,12 @@ type NodeRowProps = {
   onClickPin: (info: DiagnosticInfo) => void;
 };
 
-const useStyles = makeStyles((theme: Theme) => ({
-  ok: { color: theme.palette.success.main },
-  warn: { color: theme.palette.warning.main },
-  error: { color: theme.palette.error.main },
-  stale: { color: theme.palette.text.secondary },
-}));
+const MESSAGE_COLORS: { [key: string]: string } = {
+  ok: "success.main",
+  warn: "warning.main",
+  error: "error.main",
+  stale: "text.secondary",
+};
 
 const StyledListItemButton = muiStyled(ListItemButton, {
   shouldForwardProp: (prop) => prop !== "isPinned",
@@ -96,19 +94,18 @@ const StyledListItemButton = muiStyled(ListItemButton, {
 }));
 
 const NodeRow = React.memo(function NodeRow(props: NodeRowProps) {
-  const handleClick = useCallback(() => {
-    const info = props.info;
-    const onClick = props.onClick;
-    onClick(info);
-  }, [props.onClick, props.info]);
-  const handleClickPin = useCallback(() => {
-    const info = props.info;
-    const onClickPin = props.onClickPin;
-    onClickPin(info);
-  }, [props.onClickPin, props.info]);
+  const { info, isPinned, onClick, onClickPin } = props;
 
-  const { info, isPinned } = props;
+  const handleClick = useCallback(() => {
+    onClick(info);
+  }, [onClick, info]);
+
+  const handleClickPin = useCallback(() => {
+    onClickPin(info);
+  }, [onClickPin, info]);
+
   const levelName = LEVEL_NAMES[info.status.level];
+
   return (
     <ListItem dense disablePadding data-test-diagnostic-row>
       <StyledListItemButton isPinned={isPinned} onClick={handleClick}>
@@ -119,12 +116,7 @@ const NodeRow = React.memo(function NodeRow(props: NodeRowProps) {
           primary={info.displayName}
           secondary={info.status.message}
           secondaryTypographyProps={{
-            color: {
-              ok: "success.main",
-              warn: "warning.main",
-              error: "error.main",
-              stale: "text.secondary",
-            }[levelName ?? "stale"],
+            color: MESSAGE_COLORS[levelName ?? "stale"],
           }}
         />
       </StyledListItemButton>
@@ -145,7 +137,6 @@ const ALLOWED_DATATYPES: string[] = [
 
 function DiagnosticSummary(props: Props): JSX.Element {
   const theme = useTheme();
-  const classes = useStyles();
   const dropdownStyles = useMemo(
     () =>
       ({
@@ -327,16 +318,9 @@ function DiagnosticSummary(props: Props): JSX.Element {
 
   const renderOption = (option: ISelectableOption | undefined) =>
     option ? (
-      <div
-        className={cx({
-          [classes.ok]: option.text === "ok",
-          [classes.warn]: option.text === "warn",
-          [classes.error]: option.text === "error",
-          [classes.stale]: option.text === "stale",
-        })}
-      >
+      <Typography variant="inherit" color={MESSAGE_COLORS[option.text]}>
         &gt;= {option.text.toUpperCase()}
-      </div>
+      </Typography>
     ) : (
       ReactNull
     );
