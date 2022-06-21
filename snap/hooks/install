@@ -1,0 +1,3 @@
+#!/bin/sh -e
+
+snapctl set server-port=8080

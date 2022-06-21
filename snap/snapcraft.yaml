@@ -1,0 +1,87 @@
+name: foxglove-studio
+version: git
+summary: Integrated visualization and diagnosis tool for robotics
+description: |
+  Foxglove Studio is an integrated visualization and diagnosis tool for robotics.
+
+  * `server-port`. Port to use for the web server. Change with:
+        $ snap set foxglove-studio server-port="selected port"
+
+contact: https://foxglove.dev/contact
+license: MPL-2.0
+issues: https://github.com/foxglove/studio/issues
+
+# Add caddy
+package-repositories:
+- components: [main]
+  formats: [deb]
+  key-id: 65760C51EDEA2017CEA2CA15155B6D79CA56EA34
+  key-server: keyserver.ubuntu.com
+  suites: [any-version]
+  type: apt
+  url: https://dl.cloudsmith.io/public/caddy/stable/deb/debian
+
+confinement: strict
+base: core20
+grade: stable
+
+parts:
+  foxglove-studio:
+    plugin: npm
+    npm-node-version: 16.15.0
+    source: .
+    stage-packages:
+      - caddy
+      - libnss3
+      - libatk1.0-0
+      - libatk-bridge2.0-0
+      - libcups2
+      - libdrm2
+      - libgtk-3-0
+      - libpango-1.0-0
+      - libcairo2
+      - libgdk-pixbuf2.0-0
+      - libxcomposite1
+      - libxdamage1
+      - libxext6
+      - libxfixes3
+      - libxrandr2
+      - libgbm1
+      - libxkbcommon0
+      - libasound2
+
+    override-pull: |
+        snapcraftctl pull
+        version="$(git describe --always --tags| sed -e 's/^v//;s/-/+git/;y/-/./')"
+        [ -n "$(echo $version | grep "+git")" ] && grade=devel || grade=stable
+        snapcraftctl set-version "$version"
+        snapcraftctl set-grade "$grade"
+
+    override-build: |
+      snapcraftctl build
+      npm install -g yarn
+      yarn install --immutable
+      yarn run web:build:prod
+      yarn run build:prod
+      yarn run package
+      mkdir -p $SNAPCRAFT_PART_INSTALL/foxglove/web
+      mkdir -p $SNAPCRAFT_PART_INSTALL/foxglove/desktop
+      cp -r web/.webpack $SNAPCRAFT_PART_INSTALL/foxglove/web
+      cp -r dist/linux-unpacked/* $SNAPCRAFT_PART_INSTALL/foxglove/desktop
+
+  runner:
+    plugin: dump
+    source: snap/local/
+    organize:
+      '*': usr/bin/
+
+apps:
+  web-server:
+    command: usr/bin/web-server
+    plugs: [network, network-bind, home]
+
+  foxglove-studio:
+    command: foxglove/desktop/foxglove-studio --no-sandbox
+    plugs: [network, network-bind, home, browser-support, unity7]
+    extensions: [gnome-3-38]
+
