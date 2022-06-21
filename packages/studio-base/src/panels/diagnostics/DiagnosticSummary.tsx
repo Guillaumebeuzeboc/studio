@@ -249,7 +249,7 @@ function DiagnosticSummary(props: Props): JSX.Element {
             width={width}
             height={height}
             style={{ outline: "none" }}
-            rowHeight={25}
+            rowHeight={38}
             rowRenderer={(rowProps) => renderRow({ ...rowProps, item: nodes[rowProps.index]! })}
             rowCount={nodes.length}
             overscanRowCount={10}
