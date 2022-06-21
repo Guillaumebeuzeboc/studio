@@ -1,0 +1,3 @@
+#!/bin/sh -e
+server_port="$(snapctl get server-port)"
+exec "$SNAP/usr/bin/caddy" file-server -root "$SNAP/foxglove/web/.webpack/" --listen :$server_port

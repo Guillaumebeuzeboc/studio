@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Foxglove-studio
+Categories=Robotics;Visualization;
+Icon=${SNAP}/lib/node_modules/foxglove-studio/resources/icon/icon.png
+Exec=foxglove-studio
+Terminal=false
+StartupWMClass=foxglove-studio
+MimeType=application/octet-stream;application/octet-stream;application/zip;text/xml;text/xml;x-scheme-handler/foxglove;
+Categories=Development;
