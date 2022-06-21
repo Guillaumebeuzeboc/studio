@@ -30,6 +30,8 @@ parts:
     plugin: npm
     npm-node-version: 16.15.0
     source: .
+    build-packages:
+      - git-lfs
     stage-packages:
       - caddy
       - libnss3
