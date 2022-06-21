@@ -17,3 +17,6 @@ storybook-static/
 
 # Extensions
 *.foxe
+
+# Snap
+*.snap
